@@ -1,0 +1,143 @@
+---
+title: "Rsynt_HKR"
+author: "Vegard"
+date: "2022-09-26"
+output: html_document
+---
+
+# Purpose
+
+Aggregate HKR filgruppe to 3-year data 
+
+# Load data
+
+```{r setup, include=FALSE}
+library(data.table)
+library(tidyverse)
+
+innfil <- fread("F:/Forskningsprosjekter/PDB 2455 - Helseprofiler og til_/PRODUKSJON/RUNTIMEDUMP/HKR_RSYNT_PRE_FGLAGRINGpre.csv")
+
+
+# RESET tilbake til innfil
+Filgruppe <- copy(innfil)
+
+Filgruppe[, VAL2:=1]
+
+View(KUBE)
+```
+
+```{r}
+# source("./Ferdige R-snutter/Rsynt_Pre_FGlagring_HKR.R")
+```
+
+
+Rektangulariser
+
+GEO: 400
+KJONN: 3
+ALDERl/ALDERh: 18
+TAB1: 9
+AARl: 10
+
+Totalt antall rader skal v?re 1 944 000
+```{r}
+head(KUBE)
+```
+
+```{r}
+# Lage alle kombinasjoner av dimensjoner i KUBE
+ALLDIMS <- KUBE[, .(GEO, AARl, ALDERl, KJONN, UTDANN, LANDBAK, INNVKAT, TAB1)][CJ(GEO, AARl, ALDERl, KJONN, UTDANN, LANDBAK, INNVKAT, TAB1, unique = T), on = .(GEO, AARl, ALDERl, KJONN, UTDANN, LANDBAK, INNVKAT, TAB1)]
+
+# merge inn ALDERh og KOBLID
+ALLDIMS <- unique(KUBE[, .(ALDERl, ALDERh, KOBLID)])[ALLDIMS, on = .(ALDERl)]
+# merge inn AARh
+ALLDIMS <- unique(KUBE[, .(AARl, AARh)])[ALLDIMS, on = .(AARl)]
+# merge inn FYLKE og GEOniv
+ALLDIMS <- unique(KUBE[, .(GEO, FYLKE, GEOniv)])[ALLDIMS, on = .(GEO)]
+
+merge(KUBE, ALLDIMS, all.y = T)
+
+# Merge inn ANTOBS, ANTOBS.a, og ANTOBS.f
+KUBE2 <- KUBE[ALLDIMS, on = .(GEO, AARl, AARh, ALDERl, ALDERh, KJONN, UTDANN, LANDBAK, INNVKAT, TAB1, KOBLID, FYLKE, GEOniv)]
+KUBE2[is.na(ANTOBS), `:=` 
+      (ANTOBS = 0,
+      ANTOBS.a = 1,
+      ANTOBS.f = 0)]
+
+
+```
+
+
+```{r}
+# Sorter kuben stigende for:
+setkeyv(KUBE, c("GEO", "ALDERl", "ALDERh", "KJONN", 
+                "TAB1", "AARl"))
+
+test[, .N, by = GEOniv]
+
+test <- KUBE %>% complete(GEO, AARl, ALDERl, KJONN, TAB1) %>% 
+  select(GEOniv, GEO, AARl, AARh, ALDERl, ALDERh, everything())
+
+test[AARh != AARl]
+```
+
+
+# AIM
+
+Aggregere til 3-årige summer, før KUBEkjøring for kuber med 3-årige snitt. 
+
+* REktangularisere
+* ANTOBS skal aggregeres opp til rullende summer: frollsum()
+* AARh må settes til AARl + 2
+
+
+```{r}
+
+# Fylle inn rader, kan bruke data.table::CJ, tidyr::complete (evt finne ekvivalent med dtplyr)
+
+# Sett ANTOBS = ANTOBS + to påfølgende ANTOBS, innad i alle undergrupper av GEO, ALDERl, ALDERh, KJONN og TAB1
+
+KUBE[, ANTOBS := frollsum(ANTOBS, 3, align = "left"), by = c("GEO", "ALDERl", "ALDERh", "KJONN", "TAB1")]
+# Filtrere vekk rader med ANTOBS == NA (to høyeste AARl, som ikke kan aggregeres til treårige perioder)
+
+key(KUBE)
+KUBE[, .(AARl,KOBLID, ROW, ALDERl, ALDERh, KJONN, TAB1, ANTOBS, rollmean)]
+
+KUBE[KJONN == 1, .(ROW, GEOniv, GEO, FYLKE, AARl,ALDERl, ALDERh, KJONN, TAB1)]
+
+names(KUBE)
+KUBE[KJONN == 9]
+
+
+KUBE[ALDERl == 0 & ALDERh == 4 & GEO == 301] %>% View()
+
+test[,.(.N), by = c("GEO", "ALDERl", "ALDERh", "KJONN", "TAB1")][N == 10]
+
+
+KUBE %>% 
+  select(GEO, AARl, AARh, KJONN, ANTOBS, ANTOBSsum) %>% as_tibble()
+
+
+```
+
+
+# Notater
+
+* Noen år mangler i kombinasjoner av GEO, AARl, KJONN, ALDERl, ALDERh
+
+* Det er 95 observasjoner med KJONN == 9, alle disse har GEO == 9999. Hva gjør vi med disse?
+AARl  N
+2012	1			
+2015	1			
+2018	1			
+2020	1			
+2021	1			
+2017	9			
+2013	36			
+2014	18			
+2016	18			
+2019	9	
+
+
+postprosess: 
+* dele teller p? 3, sette rate.n til 3

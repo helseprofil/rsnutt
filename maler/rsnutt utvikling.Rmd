@@ -1,0 +1,140 @@
+---
+title: "Rsnutt-utvikling"
+author: "Vegard"
+date: "2022-09-07"
+output: html_document
+---
+
+# For utvikling
+```{r setup, include=FALSE}
+library(data.table)
+library(dplyr)
+library(stringr)
+library(tidyr)
+```
+
+# Lage relevant fildump
+```{r}
+# Filgruppe
+# Potensielle dumppunkter, i den rekkef?lgen de forekommer i produksjonen
+# LagFilgruppe
+# "RSYNT_PRE_FGLAGRINGpre",
+# "RSYNT_PRE_FGLAGRINGpost",
+# "RESHAPEpre",
+# "RESHAPEpost",
+# "RSYNT2pre",
+# "RSYNT2post",
+# "KODEBOKpre",
+# "KODEBOKpost",
+# "RSYNT1pre",
+# "RSYNT1post"
+
+# KUBE
+# "raaKUBE0"
+# "maKUBE0"
+# "anoKUBE1"
+# "anoKUBE2"
+# "anoKUBE3"
+# "anoKUBE4"
+# "KUBE_SLUTTREDIGERpre"
+# "KUBE_SLUTTREDIGERpost",
+# "STATAPRIKKpre",
+# "STATAPRIKKpost", # Rett før postprosess, funker som POSTPROSESSpre
+# "RSYNT_POSTPROSESSpost"
+```
+
+- OBS! GEO ligger som TEKST inni khfunctions, med ledende 0 (Oslo == "0301"), men som integer i fildumpene. Dette kan klusse det til for snutter som fungerer eksternt, men som ikke fungerer inni løypen. 
+
+
+# Laste inn fildump
+```{r}
+
+fildumppath <- "F:/Forskningsprosjekter/PDB 2455 - Helseprofiler og til_/PRODUKSJON/RUNTIMEDUMP"
+
+#KUBE ELLER Filgruppe
+
+fil <- file.path(fildumppath, 
+          "NEET_INNVKAT_STATAPRIKKpost.csv")
+
+KUBE <- fread(fil)
+
+# Lag en kopi for testing, som kan gjenopprettes med reset() under utarbeiding av snutt, for ? slippe ? lese inn fil p? nytt
+testkube <- copy(KUBE)
+
+
+reset <- function(){testkube <<- copy(KUBE)} # Resetter testkuben tilbake til dumppunktet som er utgangspunkt for snutten
+
+# For utvikling, sette GEO til character og legge til ledende 0
+KUBE[, GEO := as.character(GEO)]
+KUBE[nchar(GEO) == 3, GEO := paste0("0", GEO)]
+KUBE[nchar(GEO) == 5, GEO := paste0("0", GEO)]
+
+KUBE[, TRINN := sample(c(7,10), .N, T)]
+```
+
+# SNUTT
+```{r}
+# RSYNT_POSTPROSESS for kube DAAR_GK
+# Author: VL November 2023
+
+# Some rows get RATE, but not SMR/MEIS do to sumPREDTELLER == 0
+
+
+
+# Find rows with data on RATE but not SMR/MEIS, and no flag.
+# Set RATE = NA and RATE.f = 1
+KUBE[!is.na(RATE) & is.na(SMR) & is.na(MEIS) & TELLER.f == 0 & RATE.f == 0 & NEVNER.f == 0,
+     `:= ` (RATE = NA_real_,
+            RATE.f = 1)]
+
+# Reduce number of 10-year periods to 17, due to limited space in NESSTAR
+KUBE <- KUBE[AARl > max(AARl, na.rm = TRUE) - 16]
+
+```
+
+
+# Hente populasjonsfil
+```{r}
+basepath <- file.path("F:", 
+                      "Forskningsprosjekter", 
+                      "PDB 2455 - Helseprofiler og til_",
+                      "PRODUKSJON", 
+                      "PRODUKTER", 
+                      "KUBER",
+                      "KOMMUNEHELSA")
+  
+thisyear <- file.path(basepath, paste0("KH", 2023, "NESSTAR"))
+popfile <- list.files(thisyear, pattern = "Dode1.1_e0", full.names = T)
+  
+  # If no file for current profileyear, use file from last year
+  if(length(popfile) == 0){
+    cat(paste0("Population file from ", 2023, " does not exist, file from ", 2022, " is used"))
+    lastyear <- file.path(basepath, paste0("KH", 2022, "NESSTAR"))
+    popfile <- list.files(lastyear, pattern = "Dode1.1_e0", full.names = T)
+  }
+
+pop <- fread(popfile)
+```
+
+
+
+# Hente STATA-snutt
+
+```{r}
+# Hent Steinar sitt STATA-skript
+cat("\n\nSTARTER RSYNT_POSTPROSESS, STATA-SNUTT: Rsynt_Postprosess_TRANGBODDHET_v2.do\n")
+
+# Finner STATA-fil
+synt <- paste0('include "', globs[["path"]], "/", "BIN/Z_Statasnutter/Rsynt_Postprosess_TRANGBODDHET_v2.do", '"')
+
+RES <- KjorStataSkript(KUBE, script = synt, tableTYP = "DT", batchdate = batchdate, globs = globs)
+
+if (RES$feil != "") {
+  stop("Noe gikk galt i kj?ring av STATA \n", RES$feil)
+}
+
+KUBE <- RES$TABLE
+
+rm(RES)
+```
+
