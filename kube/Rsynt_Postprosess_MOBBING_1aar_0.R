@@ -6,9 +6,6 @@
 # Identifies all kommunestrata which is censored by UDIR to make sure we do not show these data. 
 # Identifies bydelstrata with only one censored school, where we cannot show data on bydel
 
-library(httr2)
-library(data.table)
-
 cat("\n\nSTARTER RSYNT_POSTPROSESS, R-SNUTT\n")
 cat("\nHenter prikkeinformasjon fra UDIR, f.o.m. 2021-2022")
 mobbingapi <- "https://api.statistikkbanken.udir.no/api/rest/v2/Eksport/150"
