@@ -4,7 +4,7 @@
 # 
 # Retrieve data from UDIR via API
 # Identifies all strata which is censored by UDIR to make sure we do not show these data
-# Whenever UDIR censor answer = 4 and/or answer = 5, we must not show data 
+# Identifies bydelstrata with only one censored school, where we cannot show data on bydel
 
 library(httr2)
 library(data.table)
@@ -49,20 +49,39 @@ for(i in 1:pages){
                               newpage))
 }
 
-# Data wrangling
-udirprikk <- udirprikk[EnhetNivaa == 3 & (AndelSvaralternativ4 == "*" | AndelSvaralternativ5 == "*")]
-udirprikk[, `:=` (GEO = Kommunekode,
-                  KJONN = fcase(KjoennKode == "A", 0,
+udirprikk[, `:=` (KJONN = fcase(KjoennKode == "A", 0,
                                 KjoennKode == "G", 1,
                                 KjoennKode == "J", 2),
                   TRINN = TrinnKode,
-                  UDIRPRIKK = 1,
                   AAR = paste0(substr(Skoleaarnavn, 1,4), "_", 
                                as.integer(substr(Skoleaarnavn, 1,4))+1))]
-udirprikk <- udirprikk[, .(GEO, AAR, KJONN, TRINN, UDIRPRIKK)]
+
+# Identify censored strata kommune
+udirprikk_kommune <- udirprikk[EnhetNivaa == 3 & (AndelSvaralternativ4 == "*" | AndelSvaralternativ5 == "*")]
+udirprikk_kommune[, `:=` (GEO = Kommunekode,
+                          UDIRPRIKK = 1)]
+udirprikk_kommune <- udirprikk_kommune[, .(GEO, AAR, KJONN, TRINN, UDIRPRIKK)]
+
+# Identify censored strata bydel
+udirprikk_bydel <- udirprikk[EnhetNivaa == 4, .(AAR, KJONN, TRINN, Organisasjonsnummer, EnhetNavn, AndelSvaralternativ4, AndelSvaralternativ5)]
+skolebydel <- fread("https://raw.githubusercontent.com/helseprofil/snutter/main/misc/SkoleBydel.csv", 
+                    colClasses=list(character=c("OrgNo","GEO")))
+udirprikk_bydel <- udirprikk_bydel[skolebydel, `:=` (GEO = i.GEO), on = c(Organisasjonsnummer = "OrgNo")]
+udirprikk_bydel <- udirprikk_bydel[!is.na(GEO)]
+
+udirprikk_bydel[, prikkskole := 0]
+udirprikk_bydel[AndelSvaralternativ4 == "*" | AndelSvaralternativ5 == "*", prikkskole := 1]
+udirprikk_bydel <- udirprikk_bydel[, .(UDIRPRIKK = sum(prikkskole, na.rm = T),
+                                       n_skoler = length(EnhetNavn)),
+                                   by = c("GEO", "AAR", "KJONN", "TRINN")]
+udirprikk_bydel <- udirprikk_bydel[UDIRPRIKK == 1]
+
+# Combine lists of strata to censor
+censor <- data.table::rbindlist(list(udirprikk_kommune,
+                                     udirprikk_bydel))
 
 # Merge udirdata
-KUBE <- merge.data.table(KUBE, udirprikk, by = c("GEO", "AAR", "KJONN", "TRINN"), all.x = T)
+KUBE <- merge.data.table(KUBE, censor, by = c("GEO", "AAR", "KJONN", "TRINN"), all.x = T)
 
 # Save object UDIRPRIKKpre
 UDIRPRIKKpre <<- KUBE[UDIRPRIKK == 1]
