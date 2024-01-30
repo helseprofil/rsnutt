@@ -64,7 +64,8 @@ udirprikk_kommune <- udirprikk_kommune[, .(GEO, AAR, KJONN, TRINN, UDIRPRIKK)]
 udirprikk_bydel <- udirprikk[EnhetNivaa == 4, .(AAR, KJONN, TRINN, Organisasjonsnummer, EnhetNavn, AndelMobbet)]
 skolebydel <- fread("https://raw.githubusercontent.com/helseprofil/snutter/main/misc/SkoleBydel.csv", 
                     colClasses=list(character=c("OrgNo","GEO")))
-udirprikk_bydel <- udirprikk_bydel[skolebydel, `:=` (GEO = i.GEO), on = c(Organisasjonsnummer = "OrgNo")][!is.na(GEO)]
+udirprikk_bydel <- udirprikk_bydel[skolebydel, `:=` (GEO = i.GEO), on = c(Organisasjonsnummer = "OrgNo")]
+udirprikk_bydel <- udirprikk_bydel[!is.na(GEO)]
 udirprikk_bydel <- udirprikk_bydel[, .(UDIRPRIKK = sum(AndelMobbet == "*", na.rm = T)), 
                    by = c("GEO", "AAR", "KJONN", "TRINN")]
 udirprikk_bydel <- udirprikk_bydel[UDIRPRIKK == 1]
