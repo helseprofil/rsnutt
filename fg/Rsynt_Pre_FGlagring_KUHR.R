@@ -7,6 +7,8 @@
 # Rectangularize FG
 # Set all missing to explicit 0 except for old GEO codes corresponding to AAlesund/Haram for years 2020-2023
 
+setDT(Filgruppe)
+
 # Handle kommune which became bydel
 Filgruppe[GEO %in% c("503000", "166200"), GEO := "500104"]
 Filgruppe[GEO %in% c("114100" ), GEO := "110308"]
