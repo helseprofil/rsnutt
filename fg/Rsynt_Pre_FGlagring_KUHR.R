@@ -43,13 +43,14 @@ joincols2 <- c("ANTOBS", "ANTOBS.f", "ANTOBS.a")
 rect <- collapse::join(rect, Filgruppe[, mget(c(.dims, joincols2))], 
                        on = .dims, how = "left", multiple = T)
 
-# Set explicit 0
-rect[!complete.cases(ANTOBS, ANTOBS.a, ANTOBS.f), `:=` (ANTOBS = 0,
-                                                        ANTOBS.f = 0,
-                                                        ANTOBS.a = 1)]
+# Set explicit 0, exept for old GEO corresponding to AAlesund/Haram in 2020-2023
+rect[!complete.cases(ANTOBS, ANTOBS.a, ANTOBS.f) & !(AARl %in% c(2020, 2021, 2022, 2023) & GEO %in% oldcodes), 
+     `:=` (ANTOBS = 0,
+           ANTOBS.f = 0,
+           ANTOBS.a = 1)]
 
 # Delete rows for year 2020-2023 and old GEO corresponding to AAlesund/Haram
-rect <- rect[!(AARl %in% c(2020, 2021, 2022, 2023) & GEO %in% oldcodes)]
+# rect <- rect[!(AARl %in% c(2020, 2021, 2022, 2023) & GEO %in% oldcodes)]
 
 # Cleanup and replace Filgruppe with rectangularized file
 setcolorder(rect, names(Filgruppe))
