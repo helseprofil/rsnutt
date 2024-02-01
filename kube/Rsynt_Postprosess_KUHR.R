@@ -2,8 +2,7 @@
 # Author: Vegard Lysne
 # Updated: 2024.02.01
 
-# Delete bydels for 2023, due to too much unknown
-
+# Most bydel in Stavanger should have SPVFLAGG = 1
 KUBE[nchar(GEO) > 4 & 
        grepl("^1103", GEO) & 
        !GEO %in% c("110308", "110309") & 
@@ -12,6 +11,7 @@ KUBE[nchar(GEO) > 4 &
      (TELLER.f = 9,
        RATE.f = 9)]
 
+# Delete bydels for 2023, due to too much unknown
 KUBE[AAR == "2020_2022" & 
        nchar(GEO) > 4, 
      `:=` 
