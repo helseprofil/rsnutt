@@ -68,8 +68,7 @@ udirprikk_bydel <- udirprikk_bydel[!is.na(GEO)]
 
 udirprikk_bydel[, prikkskole := 0]
 udirprikk_bydel[AndelSvaralternativ4 == "*" | AndelSvaralternativ5 == "*", prikkskole := 1]
-udirprikk_bydel <- udirprikk_bydel[, .(UDIRPRIKK = sum(prikkskole, na.rm = T),
-                                       n_skoler = length(EnhetNavn)),
+udirprikk_bydel <- udirprikk_bydel[, .(UDIRPRIKK = sum(prikkskole, na.rm = T)),
                                    by = c("GEO", "AAR", "KJONN", "TRINN")]
 udirprikk_bydel <- udirprikk_bydel[UDIRPRIKK == 1]
 
