@@ -6,8 +6,8 @@
 
 KUBE[GEO %in% c("1508", "1580") &
     as.numeric(substr(AAR, 6, 9)) < 2020,
-    let(RATE = NA_real_,
-        SMR = NA_real_,
-        MEIS = NA_real_,
-        RATE.f = 1,
-        TELLER.f = 1)]
+    `:=` (RATE = NA_real_,
+          SMR = NA_real_,
+          MEIS = NA_real_,
+          RATE.f = 1,
+          TELLER.f = 1)]
