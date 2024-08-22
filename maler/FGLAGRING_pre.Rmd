@@ -13,9 +13,8 @@ Aggregate HKR filgruppe to 3-year data
 
 ```{r setup, include=FALSE}
 library(data.table)
-library(tidyverse)
 
-innfil <- fread("F:/Forskningsprosjekter/PDB 2455 - Helseprofiler og til_/PRODUKSJON/RUNTIMEDUMP/HKR_RSYNT_PRE_FGLAGRINGpre.csv")
+innfil <- fread("O:/Prosjekt/FHP/PRODUKSJON/RUNTIMEDUMP/HKR_RSYNT_PRE_FGLAGRINGpre.csv")
 
 
 # RESET tilbake til innfil

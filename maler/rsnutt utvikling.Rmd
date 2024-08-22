@@ -49,7 +49,7 @@ library(tidyr)
 # Laste inn fildump
 ```{r}
 
-fildumppath <- "F:/Forskningsprosjekter/PDB 2455 - Helseprofiler og til_/PRODUKSJON/RUNTIMEDUMP"
+fildumppath <- "O:/Prosjekt/FHP/PRODUKSJON/RUNTIMEDUMP"
 
 #KUBE ELLER Filgruppe
 
